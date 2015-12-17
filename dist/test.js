@@ -1,8 +1,8 @@
-var conn, mysql, query, tosql;
+var Tosql, conn, mysql, sql, tosql;
 
 mysql = require('mysql');
 
-tosql = require('tosql');
+Tosql = require('./index');
 
 conn = mysql.createConnection({
   host: '192.168.1.100',
@@ -13,19 +13,13 @@ conn = mysql.createConnection({
 
 conn.connect();
 
-query = function(sql) {
-  return new Promise(function(resolve, reject) {
-    return conn.query(sql, function(err, result) {
-      if (err) {
-        reject(err);
-      }
-      return resolve(result);
-    });
-  });
-};
+tosql = new Tosql('resources');
 
-query('SELECT * FROM `resources`').then(function(result) {
-  return console.log(result);
+sql = tosql.insert({
+  name: 'yucong',
+  age: 21
 });
+
+console.log(sql);
 
 conn.end();
