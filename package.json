@@ -1,0 +1,29 @@
+{
+  "name": "tosql",
+  "version": "0.0.1",
+  "description": "make build a sql more easier.",
+  "main": "dist/index.js",
+  "dependencies": {
+    "gulp": "^3.9.0",
+    "lodash": "^3.10.1",
+    "gulp-coffee": "^2.3.1",
+    "mysql": "^2.10.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ManitoYu/tosql.git"
+  },
+  "keywords": [
+    "sql"
+  ],
+  "author": "Onionkings",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ManitoYu/tosql/issues"
+  },
+  "homepage": "https://github.com/ManitoYu/tosql#readme"
+}
