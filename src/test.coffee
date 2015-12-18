@@ -1,5 +1,5 @@
 mysql = require 'mysql'
-Tosql = require './index'
+tosql = require './index'
 
 conn = mysql.createConnection
   host: '192.168.1.100'
@@ -9,10 +9,8 @@ conn = mysql.createConnection
 
 conn.connect()
 
-tosql = new Tosql 'resources'
-sql = tosql.insert
-  name: 'yucong'
-  age: 21
+table = tosql 'table'
+sql = table.field(['id', 'name']).select()
 
 console.log sql
 

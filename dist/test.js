@@ -1,8 +1,8 @@
-var Tosql, conn, mysql, sql, tosql;
+var conn, mysql, sql, table, tosql;
 
 mysql = require('mysql');
 
-Tosql = require('./index');
+tosql = require('./index');
 
 conn = mysql.createConnection({
   host: '192.168.1.100',
@@ -13,12 +13,9 @@ conn = mysql.createConnection({
 
 conn.connect();
 
-tosql = new Tosql('resources');
+table = tosql('table');
 
-sql = tosql.insert({
-  name: 'yucong',
-  age: 21
-});
+sql = table.field(['id', 'name']).select();
 
 console.log(sql);
 
