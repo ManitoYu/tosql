@@ -1,9 +1,7 @@
 ## Introduction
 
 This is a new tool for building sql.
-
-I will try my best to complete it.
-
+I will try my best to complete it.  
 If you feel that the tool gives you some help, I hope you can star me[ManitoYu](https://github.com/ManitoYu/tosql).
 
 ## Examples
