@@ -9,8 +9,8 @@ conn = mysql.createConnection
 
 conn.connect()
 
-table = tosql 'table'
-sql = table.where({ id: [{ in: [1, 2, 3] }, { between: [10, 20] }] }).select()
+table = tosql 'table', 'id'
+sql = table.update { name: 'name' }, 1 
 
 console.log sql
 

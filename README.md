@@ -1,3 +1,5 @@
+[![tosql](http://www.onionkings.com/tosql.png)](https://github.com/ManitoYu/tosql)
+
 ## Introduction
 
 This is a new tool for building sql.  
@@ -44,4 +46,28 @@ table.where({ name: { like: '%name%' } }).select(); // SELECT * FROM `table` WHE
 table.where([{ id: 1 }, { name: 'name' }]).select(); // SELECT * FROM `table` WHERE (`id` = 1) OR (`name` = 'name')
 table.where({ id: 1, name: 'name' }).select(); // SELECT * FROM `table` WHERE `id` = 1 AND `name` = 'name'
 table.where({ id: [{ in: [1, 2, 3] }, { between: [10, 20] }] }).select(); // SELECT * FROM `table` WHERE ((`id` IN (1, 2, 3)) OR (`id` BETWEEN 10 AND 20))
+```
+
+### Delete
+
+```js
+table.where({ id: 1 }).delete(); // DELETE FROM `table` WHERE `id` = 1
+```
+
+If you create a model with primary key, you can do this more easier.
+```js
+var table = tosql('table', 'id');
+table.delete(1); // DELETE FROM `table` WHERE `id` = 1
+```
+
+### Update
+
+```js
+table.where({ id: 1 }).update({ age: 21 }); // UPDATE `table` SET `age` = 21 WHERE `id` = 1
+```
+
+The same as delete, you can also do it as follow.
+```js
+var table = tosql('table', 'id');
+table.update({ name: 'name' }, 1); // UPDATE `table` SET `name` = 'name' WHERE `id` = 1
 ```
