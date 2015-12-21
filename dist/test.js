@@ -1,4 +1,4 @@
-var conn, mysql, sql, table, tosql, where;
+var conn, mysql, sql, table, tosql;
 
 mysql = require('mysql');
 
@@ -15,38 +15,15 @@ conn.connect();
 
 table = tosql('table');
 
-where = [
-  {
-    id: [
-      {
-        gt: 1,
-        lt: 10
-      }, {
-        like: '%1312%'
-      }
-    ],
-    age: {
-      "in": ['yucong', 21, 22]
+sql = table.where({
+  id: [
+    {
+      "in": [1, 2, 3]
+    }, {
+      between: [10, 20]
     }
-  }, {
-    name: {
-      like: '%yucong%'
-    }
-  }
-];
-
-where = [
-  {
-    id: {
-      gt: 0,
-      lt: 10
-    }
-  }, {
-    name: 'yucong'
-  }
-];
-
-sql = table.where(null).select();
+  ]
+}).select();
 
 console.log(sql);
 

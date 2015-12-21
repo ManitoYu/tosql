@@ -4,7 +4,7 @@ class Tosql
 
   # sql templates which will be used to compile into sql
   sqlTemplates =
-    SELECT: 'SELECT <%= FIELD %> FROM `<%= TABLE %>` <%= WHERE %>'
+    SELECT: 'SELECT <%= FIELD %> FROM `<%= TABLE %>`<%= WHERE %>'
     INSERT: 'INSERT INTO `<%= TABLE %>` (<%= KEYS %>) VALUES (<%= VALUES %>)'
     UPDATE: 'UPDATE'
     DELETE: 'DELETE'
@@ -19,24 +19,35 @@ class Tosql
     value = filter[key]
 
     switch key
+      when 'ne' then "!= #{value}"
+      when 'le' then "<= #{value}"
+      when 'ge' then ">= #{value}"
       when 'eq' then "= #{value}"
       when 'gt' then "> #{value}"
       when 'lt' then "< #{value}"
       when 'like' then "LIKE '#{value}'"
+      when 'between'
+        throw new Error 'between filter should be a array' if not _.isArray value
+        throw new Error 'the length of between filter should be equal 2' if value.length isnt 2
+        "BETWEEN #{addQuotation value[0]} AND #{addQuotation value[1]}"
       when 'in'
         "IN (#{
           _.map value, (item) ->
-            return "'#{item}'" if _.isString item
-            return item if _.isNumber item
+            return addQuotation item
             throw new Error 'the values of IN is invalid'
           .join ', '
         })"
+      else throw new Error 'not allowed filter'
 
   # use and link array
   linkAnd = (andArray) -> andArray.join ' AND '
 
   # use or link array
   linkOr = (orArray) -> orArray.join ' OR '
+
+  # add quotation according to the type of value
+  addQuotation = (value) ->
+    if _.isString value then "'#{value}'" else value
 
   # link and filters
   linkAndFilters = (filter, field) ->
@@ -51,8 +62,16 @@ class Tosql
 
   # translate specified value
   translateSpecifedValue = (filter, field) ->
-    filter = "'#{filter}'" if _.isString filter
-    "`#{field}` = #{filter}"
+    "`#{field}` = #{addQuotation filter}"
+
+  # compile single where
+  complileSingleWhere = (conditions) ->
+    linkAnd _.map conditions, (filters, field) ->
+      switch true
+        when _.isArray filters then "(#{linkOrFilters filters, field})"
+        when _.isPlainObject filters then "#{linkAndFilters filters, field}"
+        else
+          translateSpecifedValue filters, field
 
   constructor: (table, pk = '') ->
     @table = table
@@ -65,7 +84,9 @@ class Tosql
   @return {string} sql
   ###
   select: () ->
-    _.template(sqlTemplates.SELECT) FIELD: field, TABLE: @table, WHERE: "WHERE #{where}"
+    # where is not empty
+    where = " WHERE #{where}" if where
+    _.template(sqlTemplates.SELECT) FIELD: field, TABLE: @table, WHERE: "#{where}"
 
   ###
   add records
@@ -80,10 +101,7 @@ class Tosql
 
     _.forEach data, (value, key) ->
       keys.push "`#{key}`"
-
-      values.push switch
-        when _.isNumber value then value
-        when _.isString value then "\'#{value}\'"
+      values.push addQuotation value
 
     throw new Error 'data length should not be 0' if not keys.length
 
@@ -140,31 +158,24 @@ class Tosql
   @return {string} sql
   ###
   where: (conditions) ->
+
     # array
     if _.isArray conditions
       where = linkOr _.map conditions, (condition) ->
-        "(#{
-          linkAnd _.map condition, (filters, field) ->
-            switch true
-              when _.isArray filters then "(#{linkOrFilters filters, field})"
-              when _.isPlainObject filters then "(#{linkAndFilters filters, field})"
-              else
-                translateSpecifedValue filters, field
-        })"
+        "(#{complileSingleWhere condition})"
 
     # object
     if _.isPlainObject conditions
-      where = linkAnd _.map conditions, (filters, field) ->
-        switch true
-          when _.isArray filters then "(#{linkOrFilters filters, field})"
-          when _.isPlainObject filters then "(#{linkAndFilters filters, field})"
-          else
-            translateSpecifedValue filters, field
+      where = complileSingleWhere conditions
 
     # number or string
-    if _.isNumber conditions or _.isString conditions
+    if _.isNumber(conditions) or _.isString(conditions)
       throw new Error 'not specify the primary key of table' if not @pk
       where = translateSpecifedValue conditions, @pk
+
+    # null or undefined
+    if _.isNull(conditions) or _.isUndefined(conditions)
+      where = ''
 
     this
 

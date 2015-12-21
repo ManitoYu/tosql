@@ -10,13 +10,7 @@ conn = mysql.createConnection
 conn.connect()
 
 table = tosql 'table'
-where = [
-  { id: [{ gt: 1, lt: 10 }, { like: '%1312%' }], age: { in: ['yucong', 21, 22] } }
-  { name: { like: '%yucong%' } }
-]
-where =  [ { id: { gt: 0, lt: 10 } }, { name: 'yucong' } ]
-
-sql = table.where(null).select()
+sql = table.where({ id: [{ in: [1, 2, 3] }, { between: [10, 20] }] }).select()
 
 console.log sql
 
@@ -26,7 +20,7 @@ console.log sql
 #       reject err if err
 #       resolve result
 #
-# query 'SELECT * FROM `resources`'
+# query sql
 #   .then (result) ->
 #     console.log result
 

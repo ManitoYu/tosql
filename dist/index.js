@@ -3,10 +3,10 @@ var Tosql, _;
 _ = require('lodash');
 
 Tosql = (function() {
-  var field, linkAnd, linkAndFilters, linkOr, linkOrFilters, sqlTemplates, translateFilter, translateSpecifedValue, where;
+  var addQuotation, complileSingleWhere, field, linkAnd, linkAndFilters, linkOr, linkOrFilters, sqlTemplates, translateFilter, translateSpecifedValue, where;
 
   sqlTemplates = {
-    SELECT: 'SELECT <%= FIELD %> FROM `<%= TABLE %>` <%= WHERE %>',
+    SELECT: 'SELECT <%= FIELD %> FROM `<%= TABLE %>`<%= WHERE %>',
     INSERT: 'INSERT INTO `<%= TABLE %>` (<%= KEYS %>) VALUES (<%= VALUES %>)',
     UPDATE: 'UPDATE',
     DELETE: 'DELETE'
@@ -21,6 +21,12 @@ Tosql = (function() {
     key = _.keys(filter)[0];
     value = filter[key];
     switch (key) {
+      case 'ne':
+        return "!= " + value;
+      case 'le':
+        return "<= " + value;
+      case 'ge':
+        return ">= " + value;
       case 'eq':
         return "= " + value;
       case 'gt':
@@ -29,16 +35,21 @@ Tosql = (function() {
         return "< " + value;
       case 'like':
         return "LIKE '" + value + "'";
+      case 'between':
+        if (!_.isArray(value)) {
+          throw new Error('between filter should be a array');
+        }
+        if (value.length !== 2) {
+          throw new Error('the length of between filter should be equal 2');
+        }
+        return "BETWEEN " + (addQuotation(value[0])) + " AND " + (addQuotation(value[1]));
       case 'in':
         return "IN (" + (_.map(value, function(item) {
-          if (_.isString(item)) {
-            return "'" + item + "'";
-          }
-          if (_.isNumber(item)) {
-            return item;
-          }
+          return addQuotation(item);
           throw new Error('the values of IN is invalid');
         }).join(', ')) + ")";
+      default:
+        throw new Error('not allowed filter');
     }
   };
 
@@ -48,6 +59,14 @@ Tosql = (function() {
 
   linkOr = function(orArray) {
     return orArray.join(' OR ');
+  };
+
+  addQuotation = function(value) {
+    if (_.isString(value)) {
+      return "'" + value + "'";
+    } else {
+      return value;
+    }
   };
 
   linkAndFilters = function(filter, field) {
@@ -66,10 +85,20 @@ Tosql = (function() {
   };
 
   translateSpecifedValue = function(filter, field) {
-    if (_.isString(filter)) {
-      filter = "'" + filter + "'";
-    }
-    return "`" + field + "` = " + filter;
+    return "`" + field + "` = " + (addQuotation(filter));
+  };
+
+  complileSingleWhere = function(conditions) {
+    return linkAnd(_.map(conditions, function(filters, field) {
+      switch (true) {
+        case _.isArray(filters):
+          return "(" + (linkOrFilters(filters, field)) + ")";
+        case _.isPlainObject(filters):
+          return "" + (linkAndFilters(filters, field));
+        default:
+          return translateSpecifedValue(filters, field);
+      }
+    }));
   };
 
   function Tosql(table, pk) {
@@ -89,10 +118,13 @@ Tosql = (function() {
    */
 
   Tosql.prototype.select = function() {
+    if (where) {
+      where = " WHERE " + where;
+    }
     return _.template(sqlTemplates.SELECT)({
       FIELD: field,
       TABLE: this.table,
-      WHERE: "WHERE " + where
+      WHERE: "" + where
     });
   };
 
@@ -111,14 +143,7 @@ Tosql = (function() {
     values = [];
     _.forEach(data, function(value, key) {
       keys.push("`" + key + "`");
-      return values.push((function() {
-        switch (false) {
-          case !_.isNumber(value):
-            return value;
-          case !_.isString(value):
-            return "\'" + value + "\'";
-        }
-      })());
+      return values.push(addQuotation(value));
     });
     if (!keys.length) {
       throw new Error('data length should not be 0');
@@ -197,35 +222,20 @@ Tosql = (function() {
   Tosql.prototype.where = function(conditions) {
     if (_.isArray(conditions)) {
       where = linkOr(_.map(conditions, function(condition) {
-        return "(" + (linkAnd(_.map(condition, function(filters, field) {
-          switch (true) {
-            case _.isArray(filters):
-              return "(" + (linkOrFilters(filters, field)) + ")";
-            case _.isPlainObject(filters):
-              return "(" + (linkAndFilters(filters, field)) + ")";
-            default:
-              return translateSpecifedValue(filters, field);
-          }
-        }))) + ")";
+        return "(" + (complileSingleWhere(condition)) + ")";
       }));
     }
     if (_.isPlainObject(conditions)) {
-      where = linkAnd(_.map(conditions, function(filters, field) {
-        switch (true) {
-          case _.isArray(filters):
-            return "(" + (linkOrFilters(filters, field)) + ")";
-          case _.isPlainObject(filters):
-            return "(" + (linkAndFilters(filters, field)) + ")";
-          default:
-            return translateSpecifedValue(filters, field);
-        }
-      }));
+      where = complileSingleWhere(conditions);
     }
-    if (_.isNumber(conditions || _.isString(conditions))) {
+    if (_.isNumber(conditions) || _.isString(conditions)) {
       if (!this.pk) {
         throw new Error('not specify the primary key of table');
       }
       where = translateSpecifedValue(conditions, this.pk);
+    }
+    if (_.isNull(conditions) || _.isUndefined(conditions)) {
+      where = '';
     }
     return this;
   };

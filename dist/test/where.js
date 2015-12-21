@@ -54,7 +54,7 @@ describe('where', function() {
         "in": ['a', 'b', 'c']
       }
     };
-    return expect(table.where(where).select()).to.equal('SELECT * FROM `table` WHERE ((`id` = 1 AND `id` < 1) OR (`id` > 2)) AND (`name` IN (\'a\', \'b\', \'c\'))');
+    return expect(table.where(where).select()).to.equal('SELECT * FROM `table` WHERE ((`id` = 1 AND `id` < 1) OR (`id` > 2)) AND `name` IN (\'a\', \'b\', \'c\')');
   });
   it('should return expected sql', function() {
     var where;
@@ -68,7 +68,7 @@ describe('where', function() {
         name: 'yucong'
       }
     ];
-    return expect(table.where(where).select()).to.equal('SELECT * FROM `table` WHERE ((`id` > 0 AND `id` < 10)) OR (`name` = \'yucong\')');
+    return expect(table.where(where).select()).to.equal('SELECT * FROM `table` WHERE (`id` > 0 AND `id` < 10) OR (`name` = \'yucong\')');
   });
   it('should return expected sql', function() {
     var where;
@@ -78,10 +78,19 @@ describe('where', function() {
   it('should return expected sql', function() {
     return expect(table.where(1).select()).to.equal('SELECT * FROM `table` WHERE `id` = 1');
   });
-  return it('should throw an error warns that not specify the primary key', function() {
+  it('should throw an error warns that not specify the primary key', function() {
     table = tosql('table');
     return expect(function() {
       return table.where(1).select;
+    }).to["throw"](Error);
+  });
+  return it('should throw an error warns that not allowed filter', function() {
+    return expect(function() {
+      return table.where({
+        id: {
+          abc: 1
+        }
+      }).select();
     }).to["throw"](Error);
   });
 });
