@@ -8,8 +8,8 @@ Tosql = (function() {
   sqlTemplates = {
     SELECT: 'SELECT <%= FIELD %> FROM `<%= TABLE %>`<%= WHERE %>',
     INSERT: 'INSERT INTO `<%= TABLE %>` (<%= KEYS %>) VALUES (<%= VALUES %>)',
-    UPDATE: 'UPDATE',
-    DELETE: 'DELETE'
+    UPDATE: 'UPDATE `<%= TABLE %>` SET <%= PAIRS %><%= WHERE %>',
+    DELETE: 'DELETE FROM `<%= TABLE %>`<%= WHERE %>'
   };
 
   field = '*';
@@ -118,14 +118,14 @@ Tosql = (function() {
    */
 
   Tosql.prototype.select = function() {
-    if (where) {
-      where = " WHERE " + where;
-    }
-    return _.template(sqlTemplates.SELECT)({
+    var templateData;
+    templateData = {
       FIELD: field,
       TABLE: this.table,
       WHERE: "" + where
-    });
+    };
+    where = '';
+    return _.template(sqlTemplates.SELECT)(templateData);
   };
 
 
@@ -138,7 +138,7 @@ Tosql = (function() {
    */
 
   Tosql.prototype.insert = function(data) {
-    var keys, values;
+    var keys, templateData, values;
     keys = [];
     values = [];
     _.forEach(data, function(value, key) {
@@ -150,11 +150,13 @@ Tosql = (function() {
     }
     keys = keys.join(', ');
     values = values.join(', ');
-    return _.template(sqlTemplates.INSERT)({
+    templateData = {
       TABLE: this.table,
       KEYS: keys,
       VALUES: values
-    });
+    };
+    where = '';
+    return _.template(sqlTemplates.INSERT)(templateData);
   };
 
 
@@ -165,7 +167,24 @@ Tosql = (function() {
   @return {string} sql
    */
 
-  Tosql.prototype.update = function() {};
+  Tosql.prototype.update = function(data, pkValue) {
+    var pairs, templateData;
+    if (_.isPlainObject(data)) {
+      pairs = _.map(data, function(value, key) {
+        return "`" + key + "` = " + (addQuotation(value));
+      }).join(', ');
+    }
+    if (!where && pkValue) {
+      where = " WHERE `" + this.pk + "` = " + (addQuotation(pkValue));
+    }
+    templateData = {
+      TABLE: this.table,
+      PAIRS: pairs,
+      WHERE: where
+    };
+    where = '';
+    return _.template(sqlTemplates.UPDATE)(templateData);
+  };
 
 
   /*
@@ -175,7 +194,18 @@ Tosql = (function() {
   @return {string} sql
    */
 
-  Tosql.prototype["delete"] = function() {};
+  Tosql.prototype["delete"] = function(pkValue) {
+    var templateData;
+    if (!where && pkValue) {
+      where = " WHERE `" + this.pk + "` = " + pkValue;
+    }
+    templateData = {
+      TABLE: this.table,
+      WHERE: where
+    };
+    where = '';
+    return _.template(sqlTemplates.DELETE)(templateData);
+  };
 
 
   /*
@@ -234,8 +264,8 @@ Tosql = (function() {
       }
       where = translateSpecifedValue(conditions, this.pk);
     }
-    if (_.isNull(conditions) || _.isUndefined(conditions)) {
-      where = '';
+    if (where) {
+      where = " WHERE " + where;
     }
     return this;
   };

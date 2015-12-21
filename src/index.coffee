@@ -6,8 +6,8 @@ class Tosql
   sqlTemplates =
     SELECT: 'SELECT <%= FIELD %> FROM `<%= TABLE %>`<%= WHERE %>'
     INSERT: 'INSERT INTO `<%= TABLE %>` (<%= KEYS %>) VALUES (<%= VALUES %>)'
-    UPDATE: 'UPDATE'
-    DELETE: 'DELETE'
+    UPDATE: 'UPDATE `<%= TABLE %>` SET <%= PAIRS %><%= WHERE %>'
+    DELETE: 'DELETE FROM `<%= TABLE %>`<%= WHERE %>'
 
   # the selected fields
   field = '*'
@@ -84,9 +84,9 @@ class Tosql
   @return {string} sql
   ###
   select: () ->
-    # where is not empty
-    where = " WHERE #{where}" if where
-    _.template(sqlTemplates.SELECT) FIELD: field, TABLE: @table, WHERE: "#{where}"
+    templateData = FIELD: field, TABLE: @table, WHERE: "#{where}"
+    where = ''
+    _.template(sqlTemplates.SELECT) templateData
 
   ###
   add records
@@ -108,7 +108,9 @@ class Tosql
     keys = keys.join ', '
     values = values.join ', '
 
-    _.template(sqlTemplates.INSERT) TABLE: @table, KEYS: keys, VALUES: values
+    templateData = TABLE: @table, KEYS: keys, VALUES: values
+    where = ''
+    _.template(sqlTemplates.INSERT) templateData
 
   ###
   update records
@@ -116,7 +118,18 @@ class Tosql
 
   @return {string} sql
   ###
-  update: () ->
+  update: (data, pkValue) ->
+    if _.isPlainObject data
+      pairs = _.map data, (value, key) ->
+        "`#{key}` = #{addQuotation value}"
+      .join ', '
+
+    if not where and pkValue
+      where = " WHERE `#{@pk}` = #{addQuotation pkValue}"
+
+    templateData = TABLE: @table, PAIRS: pairs, WHERE: where
+    where = ''
+    _.template(sqlTemplates.UPDATE) templateData
 
   ###
   delete records
@@ -124,8 +137,11 @@ class Tosql
 
   @return {string} sql
   ###
-  delete: () ->
-
+  delete: (pkValue) ->
+    where = " WHERE `#{@pk}` = #{pkValue}" if not where and pkValue
+    templateData = TABLE: @table, WHERE: where
+    where = ''
+    _.template(sqlTemplates.DELETE) templateData
 
   ###
   join some tables
@@ -158,7 +174,6 @@ class Tosql
   @return {string} sql
   ###
   where: (conditions) ->
-
     # array
     if _.isArray conditions
       where = linkOr _.map conditions, (condition) ->
@@ -173,10 +188,7 @@ class Tosql
       throw new Error 'not specify the primary key of table' if not @pk
       where = translateSpecifedValue conditions, @pk
 
-    # null or undefined
-    if _.isNull(conditions) or _.isUndefined(conditions)
-      where = ''
-
+    where = " WHERE #{where}" if where
     this
 
 module.exports = (table, id) -> new Tosql table, id
