@@ -4,14 +4,21 @@ class Tosql
 
   # sql templates which will be used to compile into sql
   sqlTemplates =
-    SELECT: 'SELECT <%= FIELD %> FROM `<%= TABLE %>`<%= WHERE %>'
+    SELECT: 'SELECT <%= FIELD %> FROM <%= TABLE %><%= JOIN %><%= WHERE %>'
     INSERT: 'INSERT INTO `<%= TABLE %>` (<%= KEYS %>) VALUES (<%= VALUES %>)'
     UPDATE: 'UPDATE `<%= TABLE %>` SET <%= PAIRS %><%= WHERE %>'
     DELETE: 'DELETE FROM `<%= TABLE %>`<%= WHERE %>'
+    JOIN: ' <%= JOIN_TYPE %>JOIN <%= LEFT_TABLE %> ON `<%= LEFT_TABLE_ALIAS %>`.`<%= LEFT_TABLE_KEY %>` = `<%= RIGHT_TABLE_ALIAS %>`.`<%= RIGHT_TABLE_KEY %>`'
 
   # the selected fields
   field = '*'
   where = ''
+  join = ''
+
+  # the cache used to store objects have been created
+  Tosql.tables = {}
+  # the cache used to store relations of some tables
+  Tosql.relations = []
 
   # translate filters
   translateFilter = (filter) ->
@@ -49,12 +56,21 @@ class Tosql
   addQuotation = (value) ->
     if _.isString value then "'#{value}'" else value
 
+  #
+  fieldWithTable = (field) ->
+    temp = field.split '.'
+    switch
+      when 1 is _.size temp then "`#{temp[0]}`"
+      when 2 is _.size temp then "`#{temp[0]}`.`#{temp[1]}`"
+      else
+        throw new Error 'invalid field'
+
   # link and filters
   linkAndFilters = (filter, field) ->
     linkAnd _.map filter, (filterValue, filterKey) ->
       obj = new Object
       obj[filterKey] = filterValue
-      "`#{field}` #{translateFilter obj}"
+      "#{fieldWithTable field} #{translateFilter obj}"
 
   # link or filters
   linkOrFilters = (filters, field) ->
@@ -62,7 +78,7 @@ class Tosql
 
   # translate specified value
   translateSpecifedValue = (filter, field) ->
-    "`#{field}` = #{addQuotation filter}"
+    "#{fieldWithTable field} = #{addQuotation filter}"
 
   # compile single where
   complileSingleWhere = (conditions) ->
@@ -84,8 +100,11 @@ class Tosql
   @return {string} sql
   ###
   select: () ->
-    templateData = FIELD: field, TABLE: @table, WHERE: "#{where}"
+    # alias of main table
+    alias = _.defaults(Tosql.tables[@table], alias: '').alias
+    templateData = FIELD: field, TABLE: "`#{@table}`#{alias and ' `' + alias + '`'}", WHERE: "#{where}", JOIN: join
     where = ''
+    join = ''
     _.template(sqlTemplates.SELECT) templateData
 
   ###
@@ -151,7 +170,24 @@ class Tosql
   @param {string} type join type
   @return {string} sql
   ###
-  join: () ->
+  join: (leftTable, rightTable, type = 'LEFT') ->
+    rightTable = @table if not rightTable
+    joinRelation = _.first _.filter Tosql.relations, (relation) ->
+      2 is _.size _.intersection [leftTable, rightTable], _.keys relation
+
+    throw new Error 'not specify the relation of two tables' if not joinRelation
+
+    leftAlias = _.defaults(Tosql.tables[leftTable] || {}, alias: '' ).alias
+    rightAlias = _.defaults(Tosql.tables[rightTable] || {}, alias: '' ).alias
+
+    join += _.template(sqlTemplates.JOIN)
+      JOIN_TYPE: type + ' '
+      LEFT_TABLE: "`#{leftTable}`#{leftAlias and ' `' + leftAlias + '`'}"
+      LEFT_TABLE_ALIAS: leftAlias || leftTable
+      RIGHT_TABLE_ALIAS: rightAlias || rightTable
+      LEFT_TABLE_KEY: joinRelation[leftTable]
+      RIGHT_TABLE_KEY: joinRelation[rightTable]
+
     this
 
   ###
@@ -191,7 +227,25 @@ class Tosql
     where = " WHERE #{where}" if where
     this
 
-module.exports = (table, id) -> new Tosql table, id
+module.exports = do () ->
+  fn = (table, id) ->
+    Tosql.tables[table] = {} if not Tosql.tables[table]
+    # cache table
+    Tosql.tables[table].table or Tosql.tables[table].table = new Tosql table, id
+    Tosql.tables[table].table
+
+  fn.relations = (relations) -> Tosql.relations = relations
+
+  fn.config = (table, config) ->
+    Tosql.tables[table] = {} if not Tosql.tables[table]
+    # merge config
+    _.assign Tosql.tables[table], config
+
+  # remove the table cache
+  fn.remove = (table) ->
+    delete Tosql.tables[table]
+
+  fn
 
 # table = tosql 'table'
 # table.pk 'id'
@@ -204,6 +258,8 @@ module.exports = (table, id) -> new Tosql table, id
   { id: [{ like: '%12131%' }, { gt: 1, lt: 10 }] }
   { name: { like: '%fasfasf%' } }
 ]
+
+
 
 # table
 #   .field(['name', 'id'])

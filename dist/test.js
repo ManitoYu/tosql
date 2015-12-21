@@ -13,11 +13,26 @@ conn = mysql.createConnection({
 
 conn.connect();
 
-table = tosql('table', 'id');
+tosql.relations([
+  {
+    table: 'table1_id',
+    table1: 'id'
+  }
+]);
 
-sql = table.update({
-  name: 'name'
-}, 1);
+tosql.config('table', {
+  alias: 't'
+});
+
+tosql.config('table1', {
+  alias: 't1'
+});
+
+table = tosql('table');
+
+sql = table.join('table1').where({
+  't.id': 1
+}).select();
 
 console.log(sql);
 

@@ -40,8 +40,9 @@ describe 'where', () ->
       .to.equal 'SELECT * FROM `table` WHERE `id` = 1'
 
   it 'should throw an error warns that not specify the primary key', () ->
+    tosql.remove 'table'
     table = tosql 'table'
-    expect () -> table.where(1).select
+    expect () -> table.where(1).select()
       .to.throw Error
 
   it 'should throw an error warns that not allowed filter', () ->

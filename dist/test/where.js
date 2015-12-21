@@ -79,9 +79,10 @@ describe('where', function() {
     return expect(table.where(1).select()).to.equal('SELECT * FROM `table` WHERE `id` = 1');
   });
   it('should throw an error warns that not specify the primary key', function() {
+    tosql.remove('table');
     table = tosql('table');
     return expect(function() {
-      return table.where(1).select;
+      return table.where(1).select();
     }).to["throw"](Error);
   });
   return it('should throw an error warns that not allowed filter', function() {

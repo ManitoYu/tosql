@@ -71,3 +71,15 @@ The same as delete, you can also do it as follow.
 var table = tosql('table', 'id');
 table.update({ name: 'name' }, 1); // UPDATE `table` SET `name` = 'name' WHERE `id` = 1
 ```
+
+### Join
+
+```js
+tosql.relations([
+  { table: 'table1_id', table1: 'id' }
+]);
+tosql.config('table', { alias: 't' });
+tosql.config('table1', { alias: 't1' });
+var table = tosql('table');
+table.join('table1').where({ 't.id': 1 }).select(); // SELECT * FROM `table` `t` LEFT JOIN `table1` `t1` ON `t1`.`id` = `t`.`table1_id` WHERE `t`.`id` = 1
+```

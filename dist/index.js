@@ -3,18 +3,25 @@ var Tosql, _;
 _ = require('lodash');
 
 Tosql = (function() {
-  var addQuotation, complileSingleWhere, field, linkAnd, linkAndFilters, linkOr, linkOrFilters, sqlTemplates, translateFilter, translateSpecifedValue, where;
+  var addQuotation, complileSingleWhere, field, fieldWithTable, join, linkAnd, linkAndFilters, linkOr, linkOrFilters, sqlTemplates, translateFilter, translateSpecifedValue, where;
 
   sqlTemplates = {
-    SELECT: 'SELECT <%= FIELD %> FROM `<%= TABLE %>`<%= WHERE %>',
+    SELECT: 'SELECT <%= FIELD %> FROM <%= TABLE %><%= JOIN %><%= WHERE %>',
     INSERT: 'INSERT INTO `<%= TABLE %>` (<%= KEYS %>) VALUES (<%= VALUES %>)',
     UPDATE: 'UPDATE `<%= TABLE %>` SET <%= PAIRS %><%= WHERE %>',
-    DELETE: 'DELETE FROM `<%= TABLE %>`<%= WHERE %>'
+    DELETE: 'DELETE FROM `<%= TABLE %>`<%= WHERE %>',
+    JOIN: ' <%= JOIN_TYPE %>JOIN <%= LEFT_TABLE %> ON `<%= LEFT_TABLE_ALIAS %>`.`<%= LEFT_TABLE_KEY %>` = `<%= RIGHT_TABLE_ALIAS %>`.`<%= RIGHT_TABLE_KEY %>`'
   };
 
   field = '*';
 
   where = '';
+
+  join = '';
+
+  Tosql.tables = {};
+
+  Tosql.relations = [];
 
   translateFilter = function(filter) {
     var key, value;
@@ -69,12 +76,25 @@ Tosql = (function() {
     }
   };
 
+  fieldWithTable = function(field) {
+    var temp;
+    temp = field.split('.');
+    switch (false) {
+      case 1 !== _.size(temp):
+        return "`" + temp[0] + "`";
+      case 2 !== _.size(temp):
+        return "`" + temp[0] + "`.`" + temp[1] + "`";
+      default:
+        throw new Error('invalid field');
+    }
+  };
+
   linkAndFilters = function(filter, field) {
     return linkAnd(_.map(filter, function(filterValue, filterKey) {
       var obj;
       obj = new Object;
       obj[filterKey] = filterValue;
-      return "`" + field + "` " + (translateFilter(obj));
+      return (fieldWithTable(field)) + " " + (translateFilter(obj));
     }));
   };
 
@@ -85,7 +105,7 @@ Tosql = (function() {
   };
 
   translateSpecifedValue = function(filter, field) {
-    return "`" + field + "` = " + (addQuotation(filter));
+    return (fieldWithTable(field)) + " = " + (addQuotation(filter));
   };
 
   complileSingleWhere = function(conditions) {
@@ -118,13 +138,18 @@ Tosql = (function() {
    */
 
   Tosql.prototype.select = function() {
-    var templateData;
+    var alias, templateData;
+    alias = _.defaults(Tosql.tables[this.table], {
+      alias: ''
+    }).alias;
     templateData = {
       FIELD: field,
-      TABLE: this.table,
-      WHERE: "" + where
+      TABLE: "`" + this.table + "`" + (alias && ' `' + alias + '`'),
+      WHERE: "" + where,
+      JOIN: join
     };
     where = '';
+    join = '';
     return _.template(sqlTemplates.SELECT)(templateData);
   };
 
@@ -217,7 +242,34 @@ Tosql = (function() {
   @return {string} sql
    */
 
-  Tosql.prototype.join = function() {
+  Tosql.prototype.join = function(leftTable, rightTable, type) {
+    var joinRelation, leftAlias, rightAlias;
+    if (type == null) {
+      type = 'LEFT';
+    }
+    if (!rightTable) {
+      rightTable = this.table;
+    }
+    joinRelation = _.first(_.filter(Tosql.relations, function(relation) {
+      return 2 === _.size(_.intersection([leftTable, rightTable], _.keys(relation)));
+    }));
+    if (!joinRelation) {
+      throw new Error('not specify the relation of two tables');
+    }
+    leftAlias = _.defaults(Tosql.tables[leftTable] || {}, {
+      alias: ''
+    }).alias;
+    rightAlias = _.defaults(Tosql.tables[rightTable] || {}, {
+      alias: ''
+    }).alias;
+    join += _.template(sqlTemplates.JOIN)({
+      JOIN_TYPE: type + ' ',
+      LEFT_TABLE: "`" + leftTable + "`" + (leftAlias && ' `' + leftAlias + '`'),
+      LEFT_TABLE_ALIAS: leftAlias || leftTable,
+      RIGHT_TABLE_ALIAS: rightAlias || rightTable,
+      LEFT_TABLE_KEY: joinRelation[leftTable],
+      RIGHT_TABLE_KEY: joinRelation[rightTable]
+    });
     return this;
   };
 
@@ -274,9 +326,29 @@ Tosql = (function() {
 
 })();
 
-module.exports = function(table, id) {
-  return new Tosql(table, id);
-};
+module.exports = (function() {
+  var fn;
+  fn = function(table, id) {
+    if (!Tosql.tables[table]) {
+      Tosql.tables[table] = {};
+    }
+    Tosql.tables[table].table || (Tosql.tables[table].table = new Tosql(table, id));
+    return Tosql.tables[table].table;
+  };
+  fn.relations = function(relations) {
+    return Tosql.relations = relations;
+  };
+  fn.config = function(table, config) {
+    if (!Tosql.tables[table]) {
+      Tosql.tables[table] = {};
+    }
+    return _.assign(Tosql.tables[table], config);
+  };
+  fn.remove = function(table) {
+    return delete Tosql.tables[table];
+  };
+  return fn;
+})();
 
 [
   {
