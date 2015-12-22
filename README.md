@@ -100,3 +100,17 @@ var table = tosql('table');
 table.where({ status: 1 }).order('id').select(); // SELECT * FROM `table` WHERE `status` = 1 ORDER BY `id` DESC
 table.order('time', false).select(); // SELECT * FROM `table` ORDER BY `time` ASC
 ```
+
+### Group
+
+```js
+var table = tosql('table');
+table.field(['sex', { sum: 'age' }, { avg: 'age' }]).group('sex').select(); // SELECT `sex`, SUM(`age`), AVG(`age`) FROM `table` GROUP BY `sex`
+```
+
+### Having
+
+```js
+var table = tosql('table');
+table.field(['sex', { sum: 'sex' }]).group('sex').having({ sum: 'sex' }, { gt: 1 }).select(); // SELECT `sex`, SUM(`sex`) FROM `table` GROUP BY `sex` HAVING SUM(`sex`) > 1
+```

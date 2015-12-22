@@ -3,10 +3,10 @@ var Tosql, _;
 _ = require('lodash');
 
 Tosql = (function() {
-  var addQuotation, complileSingleWhere, field, fieldWithTable, join, limit, linkAnd, linkAndFilters, linkOr, linkOrFilters, order, sqlTemplates, translateFilter, translateSpecifedValue, where;
+  var addQuotation, complileSingleWhere, field, fieldWithTable, group, having, join, limit, linkAnd, linkAndFilters, linkOr, linkOrFilters, order, sqlTemplates, translateFilter, translateSpecifedValue, where;
 
   sqlTemplates = {
-    SELECT: 'SELECT <%= FIELD %> FROM <%= TABLE %><%= JOIN %><%= WHERE %><%= ORDER %><%= LIMIT %>',
+    SELECT: 'SELECT <%= FIELD %> FROM <%= TABLE %><%= JOIN %><%= WHERE %><%= GROUP %><%= HAVING %><%= ORDER %><%= LIMIT %>',
     INSERT: 'INSERT INTO `<%= TABLE %>` (<%= KEYS %>) VALUES (<%= VALUES %>)',
     UPDATE: 'UPDATE `<%= TABLE %>` SET <%= PAIRS %><%= WHERE %><%= LIMIT %>',
     DELETE: 'DELETE FROM `<%= TABLE %>`<%= WHERE %><%= LIMIT %>',
@@ -18,6 +18,10 @@ Tosql = (function() {
   where = '';
 
   join = '';
+
+  group = '';
+
+  having = '';
 
   order = '';
 
@@ -151,6 +155,8 @@ Tosql = (function() {
       TABLE: "`" + this.table + "`" + (alias && ' `' + alias + '`'),
       WHERE: "" + where,
       JOIN: join,
+      GROUP: group,
+      HAVING: having,
       ORDER: order,
       LIMIT: limit
     };
@@ -295,7 +301,14 @@ Tosql = (function() {
       throw new Error('fields must be a array');
     }
     field = _.map(fields, function(value) {
-      return "`" + value + "`";
+      switch (false) {
+        case !_.isPlainObject(value):
+          return (_.keys(value)[0].toUpperCase()) + "(" + (fieldWithTable(_.values(value)[0])) + ")";
+        case !_.isString(value):
+          return "`" + value + "`";
+        default:
+          throw new Erorr('invalid field');
+      }
     }).join(', ');
     return this;
   };
@@ -371,16 +384,16 @@ Tosql = (function() {
    */
 
   Tosql.prototype.limit = function(start, rows) {
+    if (!_.isNumber(start)) {
+      throw new Error('the params of limit is invalid');
+    }
     if (arguments.length === 2) {
-      if (!_.isNumber(start) || !_.isNumber(rows)) {
+      if (!_.isNumber(rows)) {
         throw new Error('the params of limit is invalid');
       }
       limit = " LIMIT " + start + ", " + rows;
     }
     if (arguments.length === 1) {
-      if (!_.isNumber(start)) {
-        throw new Error('the params of limit is invalid');
-      }
       limit = " LIMIT " + start;
     }
     return this;
@@ -394,16 +407,30 @@ Tosql = (function() {
   @return {string} sql
    */
 
-  Tosql.prototype.group = function(field) {};
+  Tosql.prototype.group = function(field) {
+    if (!_.isString(field)) {
+      throw new Error('the param of group is invalid');
+    }
+    group = " GROUP BY " + (fieldWithTable(field));
+    return this;
+  };
 
 
   /*
   @access public
   
+  @param {object} func { sum: 'id' }
+  @param {object} compare { eq: 1 }
   @return {string} sql
    */
 
-  Tosql.prototype.having = function() {};
+  Tosql.prototype.having = function(func, compare) {
+    if (!_.isPlainObject(func) || !_.isPlainObject(compare)) {
+      throw new Error('the params of having is invalid');
+    }
+    having = " HAVING " + (_.keys(func)[0].toUpperCase()) + "(" + (fieldWithTable(_.values(func)[0])) + ") " + (translateFilter(compare));
+    return this;
+  };
 
   return Tosql;
 

@@ -4,14 +4,14 @@
   "description": "make build a sql more easier.",
   "main": "dist/index.js",
   "dependencies": {
-    "gulp": "^3.9.0",
-    "lodash": "^3.10.1",
-    "gulp-coffee": "^2.3.1",
-    "mysql": "^2.10.0"
+    "lodash": "^3.10.1"
   },
   "devDependencies": {
     "chai": "^3.4.1",
-    "mocha": "^2.3.4"
+    "mocha": "^2.3.4",
+    "mysql": "^2.10.0",
+    "gulp-coffee": "^2.3.1",
+    "gulp": "^3.9.0",
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

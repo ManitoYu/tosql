@@ -9,10 +9,14 @@ conn = mysql.createConnection
 
 conn.connect()
 
-table = tosql 'users'
+table = tosql 'table'
+
 sql = table
-  .order 'time', false
+  .field ['sex', { sum: 'sex' }]
+  .group 'sex'
+  .having { sum: 'sex' }, { gt: 1 }
   .select()
+
 
 console.log sql
 #

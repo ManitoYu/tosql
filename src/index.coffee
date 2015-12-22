@@ -4,7 +4,7 @@ class Tosql
 
   # sql templates which will be used to compile into sql
   sqlTemplates =
-    SELECT: 'SELECT <%= FIELD %> FROM <%= TABLE %><%= JOIN %><%= WHERE %><%= ORDER %><%= LIMIT %>'
+    SELECT: 'SELECT <%= FIELD %> FROM <%= TABLE %><%= JOIN %><%= WHERE %><%= GROUP %><%= HAVING %><%= ORDER %><%= LIMIT %>'
     INSERT: 'INSERT INTO `<%= TABLE %>` (<%= KEYS %>) VALUES (<%= VALUES %>)'
     UPDATE: 'UPDATE `<%= TABLE %>` SET <%= PAIRS %><%= WHERE %><%= LIMIT %>'
     DELETE: 'DELETE FROM `<%= TABLE %>`<%= WHERE %><%= LIMIT %>'
@@ -14,6 +14,8 @@ class Tosql
   field = '*'
   where = ''
   join = ''
+  group = ''
+  having = ''
   order = ''
   limit = ''
 
@@ -104,7 +106,16 @@ class Tosql
   select: () ->
     # alias of main table
     alias = _.defaults(Tosql.tables[@table], alias: '').alias
-    templateData = FIELD: field, TABLE: "`#{@table}`#{alias and ' `' + alias + '`'}", WHERE: "#{where}", JOIN: join, ORDER: order, LIMIT: limit
+    templateData =
+      FIELD: field
+      TABLE: "`#{@table}`#{alias and ' `' + alias + '`'}"
+      WHERE: "#{where}"
+      JOIN: join
+      GROUP: group
+      HAVING: having
+      ORDER: order
+      LIMIT: limit
+
     where = ''
     join = ''
     _.template(sqlTemplates.SELECT) templateData
@@ -201,7 +212,13 @@ class Tosql
   ###
   field: (fields) ->
     throw new Error 'fields must be a array' if not _.isArray fields
-    field = _.map(fields, (value) -> "`#{value}`").join ', '
+    field = _.map fields, (value) ->
+      switch
+        when _.isPlainObject value then "#{_.keys(value)[0].toUpperCase()}(#{fieldWithTable _.values(value)[0]})"
+        when _.isString value then "`#{value}`"
+        else
+          throw new Erorr 'invalid field'
+    .join ', '
     this
 
   ###
@@ -256,11 +273,11 @@ class Tosql
   @return {string} sql
   ###
   limit: (start, rows) ->
+    throw new Error 'the params of limit is invalid' if not _.isNumber(start)
     if arguments.length is 2
-      throw new Error 'the params of limit is invalid' if not _.isNumber(start) or not _.isNumber(rows)
+      throw new Error 'the params of limit is invalid' if not _.isNumber(rows)
       limit = " LIMIT #{start}, #{rows}"
     if arguments.length is 1
-      throw new Error 'the params of limit is invalid' if not _.isNumber(start)
       limit = " LIMIT #{start}"
     this
 
@@ -271,14 +288,21 @@ class Tosql
   @return {string} sql
   ###
   group: (field) ->
-    
+    throw new Error 'the param of group is invalid' if not _.isString field
+    group = " GROUP BY #{fieldWithTable field}"
+    this
 
   ###
   @access public
 
+  @param {object} func { sum: 'id' }
+  @param {object} compare { eq: 1 }
   @return {string} sql
   ###
-  having: () ->
+  having: (func, compare) ->
+    throw new Error 'the params of having is invalid' if not _.isPlainObject(func) or not _.isPlainObject(compare)
+    having = " HAVING #{_.keys(func)[0].toUpperCase()}(#{fieldWithTable  _.values(func)[0]}) #{translateFilter compare}"
+    this
 
 module.exports = do () ->
   fn = (table, id) ->
@@ -320,3 +344,6 @@ module.exports = do () ->
 #   .where('or', { name: '%yucong%', id: '%1%' })
 #   .where('like', { name: 'name', id: 2 })
 #   .select()
+
+
+# table.field(['id', { max: 'id' }, 'name'])
