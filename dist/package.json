@@ -1,0 +1,29 @@
+{
+  "name": "tosql",
+  "version": "0.0.3",
+  "description": "make building sql more easier.",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ManitoYu/tosql.git"
+  },
+  "keywords": [
+    "sql",
+    "mysql"
+  ],
+  "author": "Onionkings",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ManitoYu/tosql/issues"
+  },
+  "homepage": "https://github.com/ManitoYu/tosql#readme",
+  "dependencies": {
+    "lodash": "^3.10.1"
+  }
+}

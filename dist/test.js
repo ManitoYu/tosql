@@ -27,4 +27,8 @@ sql = table.field([
 
 console.log(sql);
 
+sql = table.select();
+
+console.log(sql);
+
 conn.end();

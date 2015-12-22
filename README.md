@@ -1,4 +1,7 @@
-[![tosql](http://www.onionkings.com/tosql.png)](https://github.com/ManitoYu/tosql)
+[![tosql](http://www.onionkings.com/tosql.png)](https://github.com/ManitoYu/tosql)  
+![QQ](https://img.shields.io/badge/QQ-412950798-brightgreen.svg)
+![wechat](https://img.shields.io/badge/wechat-onionkings-brightgreen.svg)
+![weibo](https://img.shields.io/badge/weibo-%E5%91%86%E5%9C%A8%E6%B1%9F%E5%A4%A7%E7%94%BB%E5%9C%88%E5%9C%88-brightgreen.svg)
 
 ## Introduction
 

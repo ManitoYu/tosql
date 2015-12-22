@@ -3,7 +3,7 @@ var Tosql, _;
 _ = require('lodash');
 
 Tosql = (function() {
-  var addQuotation, complileSingleWhere, field, fieldWithTable, group, having, join, limit, linkAnd, linkAndFilters, linkOr, linkOrFilters, order, sqlTemplates, translateFilter, translateSpecifedValue, where;
+  var addQuotation, complileSingleWhere, field, fieldWithTable, group, having, join, limit, linkAnd, linkAndFilters, linkOr, linkOrFilters, order, reset, sqlTemplates, translateFilter, translateSpecifedValue, where;
 
   sqlTemplates = {
     SELECT: 'SELECT <%= FIELD %> FROM <%= TABLE %><%= JOIN %><%= WHERE %><%= GROUP %><%= HAVING %><%= ORDER %><%= LIMIT %>',
@@ -30,6 +30,16 @@ Tosql = (function() {
   Tosql.tables = {};
 
   Tosql.relations = [];
+
+  reset = function() {
+    field = '*';
+    where = '';
+    join = '';
+    group = '';
+    having = '';
+    order = '';
+    return limit = '';
+  };
 
   translateFilter = function(filter) {
     var key, value;
@@ -129,12 +139,8 @@ Tosql = (function() {
     }));
   };
 
-  function Tosql(table, pk) {
-    if (pk == null) {
-      pk = '';
-    }
+  function Tosql(table) {
     this.table = table;
-    this.pk = pk;
   }
 
 
@@ -160,8 +166,7 @@ Tosql = (function() {
       ORDER: order,
       LIMIT: limit
     };
-    where = '';
-    join = '';
+    reset();
     return _.template(sqlTemplates.SELECT)(templateData);
   };
 
@@ -192,7 +197,7 @@ Tosql = (function() {
       KEYS: keys,
       VALUES: values
     };
-    where = '';
+    reset();
     return _.template(sqlTemplates.INSERT)(templateData);
   };
 
@@ -212,7 +217,7 @@ Tosql = (function() {
       }).join(', ');
     }
     if (!where && pkValue) {
-      where = " WHERE `" + this.pk + "` = " + (addQuotation(pkValue));
+      where = " WHERE `" + Tosql.tables[this.table].pk + "` = " + (addQuotation(pkValue));
     }
     templateData = {
       TABLE: this.table,
@@ -220,7 +225,7 @@ Tosql = (function() {
       WHERE: where,
       LIMIT: limit
     };
-    where = '';
+    reset();
     return _.template(sqlTemplates.UPDATE)(templateData);
   };
 
@@ -235,14 +240,14 @@ Tosql = (function() {
   Tosql.prototype["delete"] = function(pkValue) {
     var templateData;
     if (!where && pkValue) {
-      where = " WHERE `" + this.pk + "` = " + pkValue;
+      where = " WHERE `" + Tosql.tables[this.table].pk + "` = " + pkValue;
     }
     templateData = {
       TABLE: this.table,
       WHERE: where,
       LIMIT: limit
     };
-    where = '';
+    reset();
     return _.template(sqlTemplates.DELETE)(templateData);
   };
 
@@ -332,10 +337,10 @@ Tosql = (function() {
       where = complileSingleWhere(conditions);
     }
     if (_.isNumber(conditions) || _.isString(conditions)) {
-      if (!this.pk) {
+      if (!Tosql.tables[this.table].pk) {
         throw new Error('not specify the primary key of table');
       }
-      where = translateSpecifedValue(conditions, this.pk);
+      where = translateSpecifedValue(conditions, Tosql.tables[this.table].pk);
     }
     if (where) {
       where = " WHERE " + where;
@@ -438,11 +443,12 @@ Tosql = (function() {
 
 module.exports = (function() {
   var fn;
-  fn = function(table, id) {
+  fn = function(table, pk) {
     if (!Tosql.tables[table]) {
       Tosql.tables[table] = {};
     }
-    Tosql.tables[table].table || (Tosql.tables[table].table = new Tosql(table, id));
+    Tosql.tables[table].table || (Tosql.tables[table].table = new Tosql(table));
+    Tosql.tables[table].pk = pk;
     return Tosql.tables[table].table;
   };
   fn.relations = function(relations) {
@@ -459,20 +465,3 @@ module.exports = (function() {
   };
   return fn;
 })();
-
-[
-  {
-    id: [
-      {
-        like: '%12131%'
-      }, {
-        gt: 1,
-        lt: 10
-      }
-    ]
-  }, {
-    name: {
-      like: '%fasfasf%'
-    }
-  }
-];

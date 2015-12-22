@@ -24,6 +24,15 @@ class Tosql
   # the cache used to store relations of some tables
   Tosql.relations = []
 
+  reset = () ->
+    field = '*'
+    where = ''
+    join = ''
+    group = ''
+    having = ''
+    order = ''
+    limit = ''
+
   # translate filters
   translateFilter = (filter) ->
     key = _.keys(filter)[0]
@@ -93,9 +102,9 @@ class Tosql
         else
           translateSpecifedValue filters, field
 
-  constructor: (table, pk = '') ->
+  constructor: (table) ->
     @table = table
-    @pk = pk
+
 
   ###
   query records
@@ -116,8 +125,7 @@ class Tosql
       ORDER: order
       LIMIT: limit
 
-    where = ''
-    join = ''
+    reset()
     _.template(sqlTemplates.SELECT) templateData
 
   ###
@@ -141,7 +149,7 @@ class Tosql
     values = values.join ', '
 
     templateData = TABLE: @table, KEYS: keys, VALUES: values
-    where = ''
+    reset()
     _.template(sqlTemplates.INSERT) templateData
 
   ###
@@ -157,10 +165,10 @@ class Tosql
       .join ', '
 
     if not where and pkValue
-      where = " WHERE `#{@pk}` = #{addQuotation pkValue}"
+      where = " WHERE `#{Tosql.tables[@table].pk}` = #{addQuotation pkValue}"
 
     templateData = TABLE: @table, PAIRS: pairs, WHERE: where, LIMIT: limit
-    where = ''
+    reset()
     _.template(sqlTemplates.UPDATE) templateData
 
   ###
@@ -170,9 +178,9 @@ class Tosql
   @return {string} sql
   ###
   delete: (pkValue) ->
-    where = " WHERE `#{@pk}` = #{pkValue}" if not where and pkValue
+    where = " WHERE `#{Tosql.tables[@table].pk}` = #{pkValue}" if not where and pkValue
     templateData = TABLE: @table, WHERE: where, LIMIT: limit
-    where = ''
+    reset()
     _.template(sqlTemplates.DELETE) templateData
 
   ###
@@ -240,8 +248,8 @@ class Tosql
 
     # number or string
     if _.isNumber(conditions) or _.isString(conditions)
-      throw new Error 'not specify the primary key of table' if not @pk
-      where = translateSpecifedValue conditions, @pk
+      throw new Error 'not specify the primary key of table' if not Tosql.tables[@table].pk
+      where = translateSpecifedValue conditions, Tosql.tables[@table].pk
 
     where = " WHERE #{where}" if where
     this
@@ -305,10 +313,11 @@ class Tosql
     this
 
 module.exports = do () ->
-  fn = (table, id) ->
+  fn = (table, pk) ->
     Tosql.tables[table] = {} if not Tosql.tables[table]
     # cache table
-    Tosql.tables[table].table or Tosql.tables[table].table = new Tosql table, id
+    Tosql.tables[table].table or Tosql.tables[table].table = new Tosql table
+    Tosql.tables[table].pk = pk
     Tosql.tables[table].table
 
   fn.relations = (relations) -> Tosql.relations = relations
@@ -323,27 +332,3 @@ module.exports = do () ->
     delete Tosql.tables[table]
 
   fn
-
-# table = tosql 'table'
-# table.pk 'id'
-
-# table.insert data
-# table.delete 1
-# table.update data
-# table.select
-[
-  { id: [{ like: '%12131%' }, { gt: 1, lt: 10 }] }
-  { name: { like: '%fasfasf%' } }
-]
-
-
-
-# table
-#   .field(['name', 'id'])
-#   .where('and', { name: 'name', id: 1 })
-#   .where('or', { name: '%yucong%', id: '%1%' })
-#   .where('like', { name: 'name', id: 2 })
-#   .select()
-
-
-# table.field(['id', { max: 'id' }, 'name'])

@@ -17,8 +17,11 @@ sql = table
   .having { sum: 'sex' }, { gt: 1 }
   .select()
 
-
 console.log sql
+
+sql = table.select()
+console.log sql
+
 #
 # query = (sql) ->
 #   new Promise (resolve, reject) ->

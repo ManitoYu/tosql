@@ -7,6 +7,10 @@ gulp.task('build', function () {
     .pipe(gulp.dest('dist'));
 });
 
+gulp.task('dist', function () {
+  gulp.src('README.md').pipe(gulp.dest('dist'));
+});
+
 gulp.task('watch', function () {
   gulp.watch('src/**/*.coffee', ['build']);
 });
