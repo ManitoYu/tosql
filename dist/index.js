@@ -3,13 +3,13 @@ var Tosql, _;
 _ = require('lodash');
 
 Tosql = (function() {
-  var addQuotation, complileSingleWhere, field, fieldWithTable, join, linkAnd, linkAndFilters, linkOr, linkOrFilters, sqlTemplates, translateFilter, translateSpecifedValue, where;
+  var addQuotation, complileSingleWhere, field, fieldWithTable, join, limit, linkAnd, linkAndFilters, linkOr, linkOrFilters, order, sqlTemplates, translateFilter, translateSpecifedValue, where;
 
   sqlTemplates = {
-    SELECT: 'SELECT <%= FIELD %> FROM <%= TABLE %><%= JOIN %><%= WHERE %>',
+    SELECT: 'SELECT <%= FIELD %> FROM <%= TABLE %><%= JOIN %><%= WHERE %><%= ORDER %><%= LIMIT %>',
     INSERT: 'INSERT INTO `<%= TABLE %>` (<%= KEYS %>) VALUES (<%= VALUES %>)',
-    UPDATE: 'UPDATE `<%= TABLE %>` SET <%= PAIRS %><%= WHERE %>',
-    DELETE: 'DELETE FROM `<%= TABLE %>`<%= WHERE %>',
+    UPDATE: 'UPDATE `<%= TABLE %>` SET <%= PAIRS %><%= WHERE %><%= LIMIT %>',
+    DELETE: 'DELETE FROM `<%= TABLE %>`<%= WHERE %><%= LIMIT %>',
     JOIN: ' <%= JOIN_TYPE %>JOIN <%= LEFT_TABLE %> ON `<%= LEFT_TABLE_ALIAS %>`.`<%= LEFT_TABLE_KEY %>` = `<%= RIGHT_TABLE_ALIAS %>`.`<%= RIGHT_TABLE_KEY %>`'
   };
 
@@ -18,6 +18,10 @@ Tosql = (function() {
   where = '';
 
   join = '';
+
+  order = '';
+
+  limit = '';
 
   Tosql.tables = {};
 
@@ -146,7 +150,9 @@ Tosql = (function() {
       FIELD: field,
       TABLE: "`" + this.table + "`" + (alias && ' `' + alias + '`'),
       WHERE: "" + where,
-      JOIN: join
+      JOIN: join,
+      ORDER: order,
+      LIMIT: limit
     };
     where = '';
     join = '';
@@ -205,7 +211,8 @@ Tosql = (function() {
     templateData = {
       TABLE: this.table,
       PAIRS: pairs,
-      WHERE: where
+      WHERE: where,
+      LIMIT: limit
     };
     where = '';
     return _.template(sqlTemplates.UPDATE)(templateData);
@@ -226,7 +233,8 @@ Tosql = (function() {
     }
     templateData = {
       TABLE: this.table,
-      WHERE: where
+      WHERE: where,
+      LIMIT: limit
     };
     where = '';
     return _.template(sqlTemplates.DELETE)(templateData);
@@ -321,6 +329,81 @@ Tosql = (function() {
     }
     return this;
   };
+
+
+  /*
+  sort records according to fields
+  @access public
+  
+  @param {string} field the field used to sort
+  @param {boolean} desc whether or not order by desc, default desc
+  @return {string} sql
+   */
+
+  Tosql.prototype.order = function(field, desc) {
+    if (desc == null) {
+      desc = true;
+    }
+    field = (function() {
+      switch (false) {
+        case !_.isArray(field):
+          return _.map(field, function(item) {
+            return fieldWithTable(item);
+          }).join(', ');
+        case !_.isString(field):
+          return fieldWithTable(field);
+        default:
+          throw new Error('field is invalid');
+      }
+    })();
+    order = " ORDER BY " + field + " " + (desc ? 'DESC' : 'ASC');
+    return this;
+  };
+
+
+  /*
+  limit fixed records
+  @access public
+  
+  @param {integer} start
+  @param {integer} rows the number of rows will be returned
+  @return {string} sql
+   */
+
+  Tosql.prototype.limit = function(start, rows) {
+    if (arguments.length === 2) {
+      if (!_.isNumber(start) || !_.isNumber(rows)) {
+        throw new Error('the params of limit is invalid');
+      }
+      limit = " LIMIT " + start + ", " + rows;
+    }
+    if (arguments.length === 1) {
+      if (!_.isNumber(start)) {
+        throw new Error('the params of limit is invalid');
+      }
+      limit = " LIMIT " + start;
+    }
+    return this;
+  };
+
+
+  /*
+  group records according fields
+  @access public
+  
+  @return {string} sql
+   */
+
+  Tosql.prototype.group = function(field) {};
+
+
+  /*
+  @access public
+  
+  @return {string} sql
+   */
+
+  Tosql.prototype.having = function() {};
 
   return Tosql;
 

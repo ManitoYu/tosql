@@ -4,16 +4,18 @@ class Tosql
 
   # sql templates which will be used to compile into sql
   sqlTemplates =
-    SELECT: 'SELECT <%= FIELD %> FROM <%= TABLE %><%= JOIN %><%= WHERE %>'
+    SELECT: 'SELECT <%= FIELD %> FROM <%= TABLE %><%= JOIN %><%= WHERE %><%= ORDER %><%= LIMIT %>'
     INSERT: 'INSERT INTO `<%= TABLE %>` (<%= KEYS %>) VALUES (<%= VALUES %>)'
-    UPDATE: 'UPDATE `<%= TABLE %>` SET <%= PAIRS %><%= WHERE %>'
-    DELETE: 'DELETE FROM `<%= TABLE %>`<%= WHERE %>'
+    UPDATE: 'UPDATE `<%= TABLE %>` SET <%= PAIRS %><%= WHERE %><%= LIMIT %>'
+    DELETE: 'DELETE FROM `<%= TABLE %>`<%= WHERE %><%= LIMIT %>'
     JOIN: ' <%= JOIN_TYPE %>JOIN <%= LEFT_TABLE %> ON `<%= LEFT_TABLE_ALIAS %>`.`<%= LEFT_TABLE_KEY %>` = `<%= RIGHT_TABLE_ALIAS %>`.`<%= RIGHT_TABLE_KEY %>`'
 
   # the selected fields
   field = '*'
   where = ''
   join = ''
+  order = ''
+  limit = ''
 
   # the cache used to store objects have been created
   Tosql.tables = {}
@@ -102,7 +104,7 @@ class Tosql
   select: () ->
     # alias of main table
     alias = _.defaults(Tosql.tables[@table], alias: '').alias
-    templateData = FIELD: field, TABLE: "`#{@table}`#{alias and ' `' + alias + '`'}", WHERE: "#{where}", JOIN: join
+    templateData = FIELD: field, TABLE: "`#{@table}`#{alias and ' `' + alias + '`'}", WHERE: "#{where}", JOIN: join, ORDER: order, LIMIT: limit
     where = ''
     join = ''
     _.template(sqlTemplates.SELECT) templateData
@@ -146,7 +148,7 @@ class Tosql
     if not where and pkValue
       where = " WHERE `#{@pk}` = #{addQuotation pkValue}"
 
-    templateData = TABLE: @table, PAIRS: pairs, WHERE: where
+    templateData = TABLE: @table, PAIRS: pairs, WHERE: where, LIMIT: limit
     where = ''
     _.template(sqlTemplates.UPDATE) templateData
 
@@ -158,7 +160,7 @@ class Tosql
   ###
   delete: (pkValue) ->
     where = " WHERE `#{@pk}` = #{pkValue}" if not where and pkValue
-    templateData = TABLE: @table, WHERE: where
+    templateData = TABLE: @table, WHERE: where, LIMIT: limit
     where = ''
     _.template(sqlTemplates.DELETE) templateData
 
@@ -226,6 +228,57 @@ class Tosql
 
     where = " WHERE #{where}" if where
     this
+
+  ###
+  sort records according to fields
+  @access public
+
+  @param {string} field the field used to sort
+  @param {boolean} desc whether or not order by desc, default desc
+  @return {string} sql
+  ###
+  order: (field, desc = true) ->
+    field = switch
+      when _.isArray field then _.map(field, (item) -> fieldWithTable item).join ', '
+      when _.isString field then fieldWithTable field
+      else
+        throw new Error 'field is invalid'
+
+    order = " ORDER BY #{field} #{if desc then 'DESC' else 'ASC'}"
+    this
+
+  ###
+  limit fixed records
+  @access public
+
+  @param {integer} start
+  @param {integer} rows the number of rows will be returned
+  @return {string} sql
+  ###
+  limit: (start, rows) ->
+    if arguments.length is 2
+      throw new Error 'the params of limit is invalid' if not _.isNumber(start) or not _.isNumber(rows)
+      limit = " LIMIT #{start}, #{rows}"
+    if arguments.length is 1
+      throw new Error 'the params of limit is invalid' if not _.isNumber(start)
+      limit = " LIMIT #{start}"
+    this
+
+  ###
+  group records according fields
+  @access public
+
+  @return {string} sql
+  ###
+  group: (field) ->
+    
+
+  ###
+  @access public
+
+  @return {string} sql
+  ###
+  having: () ->
 
 module.exports = do () ->
   fn = (table, id) ->

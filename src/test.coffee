@@ -9,19 +9,13 @@ conn = mysql.createConnection
 
 conn.connect()
 
-tosql.relations [
-  table: 'table1_id', table1: 'id'
-]
-tosql.config 'table', alias: 't'
-tosql.config 'table1', alias: 't1'
-table = tosql 'table'
+table = tosql 'users'
 sql = table
-  .join 'table1'
-  .where 't.id': 1
+  .order 'time', false
   .select()
 
 console.log sql
-
+#
 # query = (sql) ->
 #   new Promise (resolve, reject) ->
 #     conn.query sql, (err, result) ->

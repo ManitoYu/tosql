@@ -13,26 +13,9 @@ conn = mysql.createConnection({
 
 conn.connect();
 
-tosql.relations([
-  {
-    table: 'table1_id',
-    table1: 'id'
-  }
-]);
+table = tosql('users');
 
-tosql.config('table', {
-  alias: 't'
-});
-
-tosql.config('table1', {
-  alias: 't1'
-});
-
-table = tosql('table');
-
-sql = table.join('table1').where({
-  't.id': 1
-}).select();
+sql = table.order('time', false).select();
 
 console.log(sql);
 

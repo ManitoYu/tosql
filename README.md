@@ -75,11 +75,28 @@ table.update({ name: 'name' }, 1); // UPDATE `table` SET `name` = 'name' WHERE `
 ### Join
 
 ```js
+// set the map of relations
 tosql.relations([
   { table: 'table1_id', table1: 'id' }
 ]);
+// set the alias of table
 tosql.config('table', { alias: 't' });
 tosql.config('table1', { alias: 't1' });
 var table = tosql('table');
 table.join('table1').where({ 't.id': 1 }).select(); // SELECT * FROM `table` `t` LEFT JOIN `table1` `t1` ON `t1`.`id` = `t`.`table1_id` WHERE `t`.`id` = 1
+```
+
+### Limit
+
+```js
+var table = tosql('table');
+table.limit(0, 10).select(); // SELECT * FROM `table` LIMIT 0, 1
+```
+
+### Order
+
+```js
+var table = tosql('table');
+table.where({ status: 1 }).order('id').select(); // SELECT * FROM `table` WHERE `status` = 1 ORDER BY `id` DESC
+table.order('time', false).select(); // SELECT * FROM `table` ORDER BY `time` ASC
 ```
